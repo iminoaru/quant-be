@@ -1,6 +1,7 @@
+import uuid
 from fastapi import APIRouter, HTTPException, Request, Body
-from supabase_client import supabase
-from app.middleware import auth_required
+from QuantLab_Backend.supabase_client import supabase
+from QuantLab_Backend.app.middleware import auth_required
 from pydantic import BaseModel
 import logging
 router = APIRouter()
@@ -37,11 +38,21 @@ async def delete_playlist(request: Request, playlist_id: str,):
 
 
 #FIX THIS
-@router.get("/users-playlists")
+@router.get("/users-playlists/{user_id}")
 @auth_required
 async def get_users_playlists(request: Request, user_id: str):
-    print(user_id)
-    res = supabase.table("playlists").select("*").eq("user_id", user_id).execute()
+    
+    res = supabase.table("playlists").select("playlist_id", "name", "description", "total_problems", "user_id").eq("user_id", user_id).execute()
+  
+    print(res.data)
+    return res.data
+
+
+@router.get("/global-playlists")
+async def get_global_playlists(request: Request):
+    
+    res = supabase.table("playlists").select("playlist_id", "name", "description", "total_problems", "user_id").eq("user_id", uuid.UUID('96dd7fd30d4048b8a79e6df9346dabc9').hex).execute()
+  
     print(res.data)
     return res.data
 
@@ -104,7 +115,7 @@ async def add_problem_to_playlist(request: Request, problem: Problem = Body(...)
 @router.get("/get-problems/{playlist_id}")
 async def get_problems_in_playlist(request: Request, playlist_id: str):
     res = (supabase.table("playlistproblems")
-    .select("problems!inner(problem_id, name, difficulty, category, company, hints, is_paid)")
+    .select("problems!inner(problem_id, name, difficulty, category, company, hints, is_paid, unique_name)")
     .eq("playlist_id", playlist_id)
     .execute())
     
