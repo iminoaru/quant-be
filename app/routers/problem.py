@@ -7,8 +7,9 @@ router = APIRouter()
 
 @router.get("/", status_code=200)
 async def get_all_problems(request: Request):
-    res = supabase.table("problems").select("problem_id", "name", "category", "difficulty").execute()
+    res = supabase.table("problems").select("problem_id", "name", "category", "difficulty", "is_paid", "unique_name").execute()
     return res.data
+
 
 @router.get("/{problem_id}", status_code=200)
 
@@ -25,6 +26,16 @@ async def get_problem_by_id(request: Request, problem_id: str, is_paid: bool):
         return None
     
     return problemData
+
+
+@router.get("/get-id-by-name/{unique_name}")
+async def get_problem_id_by_unique_name(request: Request, unique_name: str):
+    print(unique_name)
+    res = supabase.table("problems").select("problem_id").eq("unique_name", unique_name).execute()
+    print(res)
+    return res.data
+
+
 
 @router.get("/difficulty/{difficulty}", status_code=200)
 @auth_required
