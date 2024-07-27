@@ -7,7 +7,7 @@ router = APIRouter()
 
 @router.get("/", status_code=200)
 async def get_all_problems(request: Request):
-    res = supabase.table("problems").select("problem_id", "name", "category", "difficulty", "is_paid", "unique_name").execute()
+    res = supabase.table("problems").select("problem_id", "name", "category", "difficulty", "is_paid", "unique_name", "company", "subcategory").execute()
     return res.data
 
 
