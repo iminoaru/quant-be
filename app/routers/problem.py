@@ -35,6 +35,12 @@ async def get_problem_id_by_unique_name(request: Request, unique_name: str):
     print(res)
     return res.data
 
+@router.get("/problem-by-name/{unique_name}")
+async def get_problem_id_by_unique_name(request: Request, unique_name: str):
+    print(unique_name)
+    res = supabase.table("problems").select("*").eq("unique_name", unique_name).execute()
+    print(res)
+    return res.data
 
 
 @router.get("/difficulty/{difficulty}", status_code=200)
