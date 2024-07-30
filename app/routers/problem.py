@@ -36,11 +36,14 @@ async def get_problem_id_by_unique_name(request: Request, unique_name: str):
     return res.data
 
 @router.get("/problem-by-name/{unique_name}")
-async def get_problem_id_by_unique_name(request: Request, unique_name: str):
+async def get_problem_id_by_unique_name(request: Request, unique_name: str, is_paid: bool):
     print(unique_name)
+    
     res = supabase.table("problems").select("*").eq("unique_name", unique_name).execute()
-    print(res)
-    return res.data
+    if res.data[0]['is_paid'] and not is_paid:
+        return None
+    else:
+        return res.data
 
 
 @router.get("/difficulty/{difficulty}", status_code=200)
