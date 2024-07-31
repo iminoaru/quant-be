@@ -1,7 +1,7 @@
 import uuid
 from fastapi import APIRouter, HTTPException, Request, Body
-from supabase_client import supabase
-from app.middleware import auth_required
+from QuantLab_Backend.supabase_client import supabase
+from QuantLab_Backend.app.middleware import auth_required
 from pydantic import BaseModel
 import logging
 router = APIRouter()
@@ -37,7 +37,7 @@ async def delete_playlist(request: Request, playlist_id: str,):
     return {"message": "Playlist deleted successfully"}
 
 
-#FIX THIS
+
 @router.get("/users-playlists/{user_id}")
 @auth_required
 async def get_users_playlists(request: Request, user_id: str):
@@ -50,13 +50,22 @@ async def get_users_playlists(request: Request, user_id: str):
 
 @router.get("/global-playlists")
 async def get_global_playlists(request: Request):
+    userID_str = "a1149040-d146-4d2b-a6b6-f36c5445598c"
+    try:
+        userID = uuid.UUID(userID_str)
+        print(f"Converted UUID: {userID}")
+    except ValueError as e:
+        print(f"Error converting UUID: {e}")
+        return {"error": "Invalid UUID"}
+
+    res = supabase.table("playlists").select("playlist_id", "name", "description", "total_problems", "user_id").eq("user_id", str(userID)).execute()
     
-    res = supabase.table("playlists").select("playlist_id", "name", "description", "total_problems", "user_id").eq("user_id", uuid.UUID('96dd7fd30d4048b8a79e6df9346dabc9').hex).execute()
-  
-    print(res.data)
+    print(f"Response: {res}")
+    if res.error:
+        print(f"Error: {res.error}")
+        return {"error": res.error.message}
+
     return res.data
-
-
 class PlaylistCreate(BaseModel):
     user_id: str
     name: str
