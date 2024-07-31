@@ -1,7 +1,7 @@
 import uuid
 from fastapi import APIRouter, HTTPException, Request, Body
-from QuantLab_Backend.supabase_client import supabase
-from QuantLab_Backend.app.middleware import auth_required
+from supabase_client import supabase
+from app.middleware import auth_required
 from pydantic import BaseModel
 import logging
 router = APIRouter()
