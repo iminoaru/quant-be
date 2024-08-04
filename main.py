@@ -28,5 +28,5 @@ app.include_router(playlist.router, prefix="/playlists", tags=["playlists"])
 
 @app.get("/")
 def read_root():
-    response = supabase.table("problems").select("*").execute()
-    return response.data
+    
+    return {"greetings": "welcome"}
