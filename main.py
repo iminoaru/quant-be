@@ -30,3 +30,15 @@ app.include_router(playlist.router, prefix="/playlists", tags=["playlists"])
 def read_root():
     
     return {"greetings": "welcome"}
+
+
+@app.get("/api/random-problem")
+async def get_random_problems():
+    try:
+        response = supabase.rpc('get_random_question').execute()
+        if response.data and len(response.data) > 0:
+            return {"unique_name": response.data[0]['unique_name']}
+        else:
+            raise HTTPException(status_code=404, detail="No random problem found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
