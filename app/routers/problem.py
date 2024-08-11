@@ -2,6 +2,7 @@
 from fastapi import APIRouter, HTTPException, Request
 from supabase_client import supabase
 from app.middleware import auth_required
+from app.utils import is_paid_user
 
 router = APIRouter()
 
@@ -12,20 +13,21 @@ async def get_all_problems(request: Request):
 
 
 @router.get("/{problem_id}", status_code=200)
-
-async def get_problem_by_id(request: Request, problem_id: str, is_paid: bool):
+async def get_problem_by_id(request: Request, problem_id: str, user_id: str):
+    
     res = supabase.table("problems").select("*").eq("problem_id", problem_id).execute()
     
     if not res.data:
         raise HTTPException(status_code=404, detail="Problem not found")
     
-    problemData = res.data
-    problem = res.data[0] 
+    problem = res.data[0]
     
-    if problem['is_paid'] and not is_paid:
-        return None
+    if problem['is_paid']:
+        is_paid = await is_paid_user(user_id)
+        if not is_paid:
+            raise HTTPException(status_code=403, detail="Subscription required to access this problem")
     
-    return problemData
+    return problem
 
 
 @router.get("/get-id-by-name/{unique_name}")
@@ -35,67 +37,32 @@ async def get_problem_id_by_unique_name(request: Request, unique_name: str):
     print(res)
     return res.data
 
+
 @router.get("/problem-by-name/{unique_name}")
-async def get_problem_id_by_unique_name(request: Request, unique_name: str, is_paid: bool):
-    print(unique_name)
-    
-    res = supabase.table("problems").select("*").eq("unique_name", unique_name).execute()
-    if res.data[0]['is_paid'] and not is_paid:
-        return None
-    else:
-        return res.data
-
-
-@router.get("/difficulty/{difficulty}", status_code=200)
-@auth_required
-async def get_problems_by_difficulty(request: Request, difficulty: str):
-    res = supabase.table("problems").select("*").eq("difficulty", difficulty).execute()
-    return res.data
-
-@router.get("/search/{query}", status_code=200)
-@auth_required
-async def search_problems(request: Request, query: str):
-    query = query.strip()
-    response = supabase.table("problems").select("*").ilike("name", f"%{query}%").execute()
-    return response.data
-
-
-
-
-@router.get("/filter/", status_code=200)
-async def filter_problems(
-        difficulty: str | None = None,
-        category: str | None = None,
-        subcategory: str | None = None,
-        company: str | None = None,
-        search: str = ""
+async def get_problem_by_unique_name(
+    request: Request, 
+    unique_name: str, 
+    user_id: str = None
 ):
-    query = supabase.table("problems").select("*")
 
-    if difficulty:
-        query = query.eq("difficulty", difficulty)
 
-    if category:
-        query = query.eq("category", category)
-
-    if subcategory:
-        query = query.eq("subcategory", subcategory)
-
-    if company:
-        query = query.eq("company", company)
-
-    if query:
-        query = query.ilike("name", f"*{search}*")
-
-    res = query.execute()
-
+    res = supabase.table("problems").select("*").eq("unique_name", unique_name).execute()
+    
     if not res.data:
-        raise HTTPException(status_code=404, detail="No problems found with the given filters")
-
+        raise HTTPException(status_code=404, detail="Problem not found")
+    
+    problem = res.data[0]
+    
+    if problem['is_paid']:
+        is_paid = await is_paid_user(user_id)
+        if not is_paid:
+            raise HTTPException(status_code=403, detail="Subscription required to access this problem")
+    
     return res.data
 
 
 @router.get("/get-bookmarked/", status_code=200)
+@auth_required
 async def get_bookmarked_problems(user_id):
     try:
         UUID4(user_id, version=4)
