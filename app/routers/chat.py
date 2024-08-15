@@ -1,4 +1,3 @@
-# backend/app/routers/chat.py
 
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import StreamingResponse
@@ -7,9 +6,9 @@ from pydantic import BaseModel
 from typing import List, AsyncGenerator
 from langchain_openai import ChatOpenAI
 from langchain.schema import HumanMessage, AIMessage, SystemMessage
-from app.middleware import auth_required
-from app.utils import is_paid_user
-from supabase_client import supabase
+from backend.app.middleware import auth_required
+from backend.app.utils import is_paid_user
+from backend.supabase_client import supabase
 import os
 import logging
 
@@ -52,14 +51,18 @@ async def chat(request: Request, chat_request: ChatRequest):
 
         problem_details = get_problem_details(chat_request.problem_id)
 
-        res = supabase.table("chat_history").select("*").eq("user_id", chat_request.user_id).eq("problem_id", chat_request.problem_id).order('created_at').execute()
-        chat_history = res.data
+        
+        res = supabase.table("chat_history").select("*").eq("user_id", chat_request.user_id).eq("problem_id", chat_request.problem_id).order('created_at', desc=True).limit(5).execute()
+        chat_history = res.data[::-1]  # Reverse to get in chronological order
 
-        system_message = SystemMessage(content=f"""
+        
+        messages = [SystemMessage(content=f"""
         You are an AI assistant for a quant finance question platform named QuantDash.
         Refer to yourself as QuantDash Helper.
-        If anything is out of context just say it is not related to this question, don't even answer general quant queries, just related to the problem.
-        If you need to provide equations, strictly use the format that is in the Solution section of the problem details, the latex format, enclosing equations in $$.
+        If anything is out of context just say it is not related to this question.
+        If you need to provide equations, use the following format:
+        - Inline equations should be wrapped in single dollar signs: `$equation$`.
+        - Block equations should be wrapped in double dollar signs: `$$equation$$`.
         Use the following problem details to answer the user's question:
 
         Problem: {problem_details['name']}
@@ -68,18 +71,20 @@ async def chat(request: Request, chat_request: ChatRequest):
         Solution: {problem_details['solution']}
         Category: {problem_details['category']}
 
-        Provide only necessary information, don't add too much detail, add some emojis if you feel like it, just enough to understand, be precise and straight to the point.
-        """)
+        Provide only necessary information, add some emojis if you feel like it, be precise and straight to the point.
+        """)]
 
-        messages = [system_message]
+        # Add the recent chat history to the messages
         for msg in chat_history:
             if msg['role'] == 'user':
                 messages.append(HumanMessage(content=msg['message']))
             elif msg['role'] == 'assistant':
                 messages.append(AIMessage(content=msg['message']))
 
+        # Add the current user message
         messages.append(HumanMessage(content=chat_request.message))
 
+        
         async def event_generator():
             full_response = ""
             async for token in generate_response(messages):
@@ -87,7 +92,7 @@ async def chat(request: Request, chat_request: ChatRequest):
                 yield f"data: {token}\n\n"
             yield "data: [DONE]\n\n"
 
-            
+            # Update the chat history in the database
             supabase.table("chat_history").insert([
                 {"user_id": chat_request.user_id, "problem_id": chat_request.problem_id, "role": "user", "message": chat_request.message},
                 {"user_id": chat_request.user_id, "problem_id": chat_request.problem_id, "role": "assistant", "message": full_response}
@@ -97,6 +102,7 @@ async def chat(request: Request, chat_request: ChatRequest):
     except Exception as e:
         logger.error(f"An error occurred: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
 
 @router.get("/chat-history/{problem_id}")
 @auth_required
