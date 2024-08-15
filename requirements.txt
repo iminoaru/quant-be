@@ -1,4 +1,10 @@
 fastapi~=0.111.0
-supabase~=2.5.1
+pydantic~=2.8.0
 starlette~=0.37.2
 python-dotenv~=1.0.1
+supabase~=2.5.1
+langchain
+langchain-openai
+fastapi-limiter 
+tiktoken 
+redis
