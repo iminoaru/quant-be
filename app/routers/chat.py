@@ -6,9 +6,9 @@ from pydantic import BaseModel
 from typing import List, AsyncGenerator
 from langchain_openai import ChatOpenAI
 from langchain.schema import HumanMessage, AIMessage, SystemMessage
-from backend.app.middleware import auth_required
-from backend.app.utils import is_paid_user
-from backend.supabase_client import supabase
+from app.middleware import auth_required
+from app.utils import is_paid_user
+from supabase_client import supabase
 import os
 import logging
 
