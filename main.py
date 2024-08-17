@@ -28,7 +28,7 @@ app.include_router(userproblems.router, prefix="/userproblems", tags=["userprobl
 app.include_router(playlist.router, prefix="/playlists", tags=["playlists"])
 
 app.include_router(chat.router, prefix="/chat", tags=["chat"])
-app.include_router(chat.expert, prefix="/experts", tags=["experts"])
+app.include_router(expert.router, prefix="/experts", tags=["experts"])
 @app.get("/")
 def read_root():
     
