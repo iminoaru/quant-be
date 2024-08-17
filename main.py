@@ -6,6 +6,7 @@ from app.routers import problem
 from app.routers import userproblems
 from app.routers import playlist
 from app.routers import chat
+from app.routers import expert
 from supabase_client import supabase
 from dotenv import load_dotenv
 
@@ -27,7 +28,7 @@ app.include_router(userproblems.router, prefix="/userproblems", tags=["userprobl
 app.include_router(playlist.router, prefix="/playlists", tags=["playlists"])
 
 app.include_router(chat.router, prefix="/chat", tags=["chat"])
-
+app.include_router(chat.expert, prefix="/experts", tags=["experts"])
 @app.get("/")
 def read_root():
     
