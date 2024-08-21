@@ -1,4 +1,5 @@
 
+from collections import defaultdict
 from fastapi import APIRouter, HTTPException, Request, Body
 from pydantic import BaseModel
 from supabase_client import supabase
@@ -104,56 +105,59 @@ async def get_user_problems(user_id: str, request: Request):
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
 
 
-@router.get("/user-stats", status_code=200)
-async def get_user_stats(user_id: str, request: Request):
+@router.get("/user-stats")
+@auth_required
+async def get_user_stats(request: Request, user_id: str):
     try:
-        def get_count(result):
-            print(f"Query result: {result}")
-            if hasattr(result, 'count'):
-                return result.count
-            elif isinstance(result.data, list):
-                return len(result.data)
-            else:
-                print(f"Count not found in result: {result}")
-                return 0
+        # Fetch all problems with their difficulty and category
+        all_problems = supabase.table("problems").select("problem_id", "difficulty", "category").execute()
+        
+        # Create dictionaries to store total counts
+        total_difficulty = defaultdict(int)
+        total_category = defaultdict(int)
+        
+        # Count total problems for each difficulty and category
+        for problem in all_problems.data:
+            total_difficulty[problem['difficulty']] += 1
+            total_category[problem['category']] += 1
 
-        # Query for user's solved problems with difficulty
+        # Fetch user's solved problems
         user_problems = supabase.table("userproblems")\
-            .select("problems(difficulty)")\
+            .select("problem_id, problems(difficulty, category)")\
             .eq("user_id", user_id)\
             .eq("status", "solved")\
             .execute()
 
-        print(f"User problems result: {user_problems}")
+        # Count solved problems for each difficulty and category
+        difficulty_counts = defaultdict(int)
+        category_counts = defaultdict(int)
 
-        # Count problems for each difficulty
-        easy_count = sum(1 for problem in user_problems.data if problem['problems']['difficulty'] == 'Easy')
-        medium_count = sum(1 for problem in user_problems.data if problem['problems']['difficulty'] == 'Medium')
-        hard_count = sum(1 for problem in user_problems.data if problem['problems']['difficulty'] == 'Hard')
+        for problem in user_problems.data:
+            difficulty = problem['problems']['difficulty']
+            category = problem['problems']['category']
+            difficulty_counts[difficulty] += 1
+            category_counts[category] += 1
 
-        # Query for total problems counts
-        total_easy = supabase.table("problems")\
-            .select("*", count="exact")\
-            .eq("difficulty", "Easy")\
-            .execute()
-            
-        total_medium = supabase.table("problems")\
-            .select("*", count="exact")\
-            .eq("difficulty", "Medium")\
-            .execute()
-            
-        total_hard = supabase.table("problems")\
-            .select("*", count="exact")\
-            .eq("difficulty", "Hard")\
-            .execute()
+        # Prepare the response data
+        difficulty_stats = {
+            difficulty: {
+                "solved": difficulty_counts[difficulty],
+                "total": total_difficulty[difficulty]
+            }
+            for difficulty in ["Easy", "Medium", "Hard"]
+        }
+
+        category_stats = {
+            category: {
+                "solved": category_counts[category],
+                "total": total_category[category]
+            }
+            for category in ["Statistics", "Probability", "Calculus", "Maths"]
+        }
 
         return {
-            "easy_count": easy_count,
-            "total_easy": get_count(total_easy),
-            "medium_count": medium_count,
-            "total_medium": get_count(total_medium),
-            "hard_count": hard_count,
-            "total_hard": get_count(total_hard)
+            "difficulty_stats": difficulty_stats,
+            "category_stats": category_stats
         }
 
     except Exception as e:
