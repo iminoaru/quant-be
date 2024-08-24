@@ -163,3 +163,29 @@ async def get_user_stats(request: Request, user_id: str):
     except Exception as e:
         print(f"Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+
+
+@router.get("/user-problem-counts")
+@auth_required
+async def get_user_problem_counts(request: Request, user_id: str):
+    try:
+        # Fetch total problems count
+        total_problems = supabase.table("problems").select("count", count="exact").execute()
+        total_count = total_problems.count
+
+        # Fetch user's solved problems count
+        user_solved = supabase.table("userproblems")\
+            .select("count", count="exact")\
+            .eq("user_id", user_id)\
+            .eq("status", "solved")\
+            .execute()
+        solved_count = user_solved.count
+
+        return {
+            "total_solved": solved_count,
+            "total_problems": total_count
+        }
+
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
