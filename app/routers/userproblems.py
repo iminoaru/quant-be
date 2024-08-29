@@ -152,7 +152,7 @@ async def get_user_stats(request: Request, user_id: str):
                 "solved": category_counts[category],
                 "total": total_category[category]
             }
-            for category in ["Statistics", "Probability", "Calculus", "Maths"]
+            for category in ["Brainteaser", "Probability", "Calculus", "Maths"] #hardcoded, need to change a lot
         }
 
         return {
@@ -163,8 +163,8 @@ async def get_user_stats(request: Request, user_id: str):
     except Exception as e:
         print(f"Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
-
-
+    
+    
 @router.get("/user-problem-counts")
 @auth_required
 async def get_user_problem_counts(request: Request, user_id: str):
