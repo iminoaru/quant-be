@@ -1,40 +1,37 @@
 import datetime
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from starlette.middleware.cors import CORSMiddleware
 
-from app.routers import user
-from app.routers import problem
-from app.routers import userproblems
-from app.routers import playlist
-from app.routers import chat
-from app.routers import expert
+
+from app.middleware import verify_api_key
+from app.routers import router  # Import the aggregated router
 from supabase_client import supabase
 from dotenv import load_dotenv
+
 
 load_dotenv()
 
 app = FastAPI()
 
+
+# Apply secure_call to all routes by default
+@app.middleware("http")
+async def apply_secure_call(request: Request, call_next):
+    await verify_api_key(request)
+    response = await call_next(request)
+    return response
+
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://quantdash.vercel.app"],
+    allow_origins=["*"],  # Replace with your frontend domain
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(user.router, prefix="/users", tags=["users"])
-app.include_router(problem.router, prefix="/problems", tags=["problems"])
-app.include_router(userproblems.router, prefix="/userproblems", tags=["userproblems"])
-app.include_router(playlist.router, prefix="/playlists", tags=["playlists"])
-
-app.include_router(chat.router, prefix="/chat", tags=["chat"])
-app.include_router(expert.router, prefix="/experts", tags=["experts"])
-@app.get("/")
-def read_root():
-    
-    return {"greetings": "welcome"}
-
+# Include the aggregated router
+app.include_router(router)
 
 @app.get("/api/random-problem")
 async def get_random_problems():
