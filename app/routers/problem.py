@@ -1,8 +1,9 @@
-
+import re
 from fastapi import APIRouter, HTTPException, Request
 from supabase_client import supabase
 from app.middleware import auth_required
 from app.utils import is_paid_user
+from pydantic import UUID4
 
 router = APIRouter()
 
@@ -44,8 +45,7 @@ async def get_problem_by_unique_name(
     unique_name: str, 
     user_id: str = None
 ):
-
-
+    # Fetch the current problem
     res = supabase.table("problems").select("*").eq("unique_name", unique_name).execute()
     
     if not res.data:
@@ -58,7 +58,22 @@ async def get_problem_by_unique_name(
         if not is_paid:
             raise HTTPException(status_code=403, detail="Subscription required to access this problem")
     
-    return res.data
+    # Extract the current problem number
+    match = re.match(r'(\d+)\.', problem['name'])
+    if not match:
+        raise HTTPException(status_code=400, detail="Invalid problem name format")
+    
+    current_number = int(match.group(1))
+    
+    # Get the next problem
+    next_res = supabase.table("problems").select("unique_name").ilike("name", f"{current_number + 1}.%").limit(1).execute()
+    problem['next_problem'] = next_res.data[0]['unique_name'] if next_res.data else None
+    
+    # Get the previous problem
+    prev_res = supabase.table("problems").select("unique_name").ilike("name", f"{current_number - 1}.%").limit(1).execute()
+    problem['prev_problem'] = prev_res.data[0]['unique_name'] if prev_res.data else None
+    
+    return problem
 
 
 @router.get("/get-bookmarked/", status_code=200)
